@@ -1,14 +1,17 @@
-"""Job scraper pipeline: scrape → filter → score → store → report."""
+"""Job scraper pipeline: scrape → filter → score → store → export → report."""
 from __future__ import annotations
 
 import argparse
 import asyncio
+from datetime import date
+from pathlib import Path
 from dotenv import load_dotenv  # type: ignore[import]
 
 from config_schema import load_config
 from scraper import create_browser_context, run_scrapers
 from analyzer import ScoredListing, filter_listings, rank_listings
 from store import init_db, upsert_listing
+from exporter import export_csv, export_html
 
 
 async def main(
@@ -65,6 +68,13 @@ async def main(
     print(f"\n{'─' * 80}")
     print(f"  {len(ranked)} listings passed filters  |  {new_count} new")
 
+    # Always export — overwrites previous run's files
+    today = str(date.today())
+    csv_path = export_csv(ranked, f"data/results_{today}.csv")
+    html_path = export_html(ranked, f"data/results_{today}.html", run_date=today)
+    print(f"\n  CSV  → {csv_path}")
+    print(f"  HTML → {html_path}")
+
 
 # ---------------------------------------------------------------------------
 # Output helpers
@@ -99,7 +109,7 @@ def _stars(total: int) -> str:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Job scraper — London visa-eligible roles")
+    parser = argparse.ArgumentParser(description="Job scraper — London visa-eligible roles for Martha Hartl")
     parser.add_argument("--source", choices=["linkedin", "indeed"], help="Scrape only this source")
     parser.add_argument("--dry-run", action="store_true", help="Don't write to DB")
     parser.add_argument(
