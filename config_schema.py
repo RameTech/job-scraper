@@ -8,6 +8,7 @@ class ScraperConfig(BaseModel):
     headless: bool = True
     timeout_ms: int = 30000
     max_listings_per_run: int = 100
+    description_concurrency: int = 4   # parallel description page fetches
 
 
 class SearchConfig(BaseModel):

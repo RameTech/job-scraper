@@ -2,10 +2,10 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass, field
-from typing import AsyncGenerator
+import random
+from dataclasses import dataclass
 
-from patchright.async_api import BrowserContext, Page, async_playwright
+from patchright.async_api import BrowserContext, async_playwright
 
 from config_schema import Config
 
@@ -24,7 +24,6 @@ class RawListing:
 
 
 async def create_browser_context(headless: bool = True) -> tuple:
-    """Start Playwright and return (playwright, browser, context)."""
     pw = await async_playwright().start()
     browser = await pw.chromium.launch(headless=headless)
     context = await browser.new_context(
@@ -37,13 +36,84 @@ async def create_browser_context(headless: bool = True) -> tuple:
     return pw, browser, context
 
 
+# ---------------------------------------------------------------------------
+# Description fetchers — visit each job page to get the full text
+# ---------------------------------------------------------------------------
+
+async def _fetch_indeed_description(context: BrowserContext, url: str, sem: asyncio.Semaphore) -> str:
+    async with sem:
+        page = await context.new_page()
+        try:
+            await page.goto(url, timeout=30000)
+            await page.wait_for_selector("#jobDescriptionText", timeout=8000)
+            el = await page.query_selector("#jobDescriptionText")
+            return (await el.inner_text()).strip() if el else ""
+        except Exception:
+            return ""
+        finally:
+            await page.close()
+            await asyncio.sleep(random.uniform(0.5, 1.2))
+
+
+async def _fetch_linkedin_description(context: BrowserContext, url: str, sem: asyncio.Semaphore) -> str:
+    async with sem:
+        page = await context.new_page()
+        try:
+            await page.goto(url, timeout=30000)
+            await page.wait_for_selector(".description__text", timeout=8000)
+            el = await page.query_selector(".description__text")
+            return (await el.inner_text()).strip() if el else ""
+        except Exception:
+            return ""
+        finally:
+            await page.close()
+            await asyncio.sleep(random.uniform(0.5, 1.2))
+
+
+async def _enrich_descriptions(
+    listings: list[RawListing],
+    context: BrowserContext,
+    concurrency: int = 4,
+) -> None:
+    """Fetch full descriptions for all listings in-place, with rate limiting."""
+    sem = asyncio.Semaphore(concurrency)
+
+    fetchers = {
+        "indeed": _fetch_indeed_description,
+        "linkedin": _fetch_linkedin_description,
+    }
+
+    tasks = []
+    for listing in listings:
+        fetch = fetchers.get(listing.source)
+        if fetch and listing.url:
+            tasks.append((listing, fetch(context, listing.url, sem)))
+        else:
+            tasks.append((listing, None))
+
+    total = len([t for _, t in tasks if t is not None])
+    print(f"  Fetching {total} job descriptions...", flush=True)
+
+    done = 0
+    for listing, coro in tasks:
+        if coro is None:
+            continue
+        listing.description = await coro
+        done += 1
+        if done % 10 == 0 or done == total:
+            print(f"  {done}/{total} descriptions fetched", flush=True)
+
+
+# ---------------------------------------------------------------------------
+# Card scrapers
+# ---------------------------------------------------------------------------
+
 async def scrape_indeed(
     context: BrowserContext,
     keyword: str,
     location: str,
     max_results: int = 25,
 ) -> list[RawListing]:
-    """Scrape Indeed for job listings."""
     page = await context.new_page()
     results: list[RawListing] = []
 
@@ -57,7 +127,6 @@ async def scrape_indeed(
 
         cards = await page.query_selector_all(".tapItem")
         for card in cards[:max_results]:
-            # Job ID lives on the anchor: id="job_<jk>"
             link_el = await card.query_selector("a[id^='job_']")
             if not link_el:
                 continue
@@ -77,17 +146,15 @@ async def scrape_indeed(
             if not title or not jk:
                 continue
 
-            results.append(
-                RawListing(
-                    source="indeed",
-                    external_id=jk,
-                    title=title,
-                    company=company,
-                    location=loc_text,
-                    salary=salary,
-                    url=f"https://uk.indeed.com/viewjob?jk={jk}",
-                )
-            )
+            results.append(RawListing(
+                source="indeed",
+                external_id=jk,
+                title=title,
+                company=company,
+                location=loc_text,
+                salary=salary,
+                url=f"https://uk.indeed.com/viewjob?jk={jk}",
+            ))
     except Exception as e:
         print(f"[indeed] Error scraping '{keyword}' in '{location}': {e}")
     finally:
@@ -102,7 +169,6 @@ async def scrape_linkedin(
     location: str,
     max_results: int = 25,
 ) -> list[RawListing]:
-    """Scrape LinkedIn Jobs (public, no auth required for basic listings)."""
     page = await context.new_page()
     results: list[RawListing] = []
 
@@ -132,16 +198,14 @@ async def scrape_linkedin(
             if not title or not job_id:
                 continue
 
-            results.append(
-                RawListing(
-                    source="linkedin",
-                    external_id=job_id,
-                    title=title,
-                    company=company,
-                    location=loc_text,
-                    url=href or "",
-                )
-            )
+            results.append(RawListing(
+                source="linkedin",
+                external_id=job_id,
+                title=title,
+                company=company,
+                location=loc_text,
+                url=href or "",
+            ))
     except Exception as e:
         print(f"[linkedin] Error scraping '{keyword}' in '{location}': {e}")
     finally:
@@ -150,8 +214,12 @@ async def scrape_linkedin(
     return results
 
 
+# ---------------------------------------------------------------------------
+# Pipeline
+# ---------------------------------------------------------------------------
+
 async def run_scrapers(config: Config, context: BrowserContext) -> list[RawListing]:
-    """Run all configured scrapers and return combined results."""
+    """Scrape cards from all sources, then enrich with full descriptions."""
     all_results: list[RawListing] = []
     max_per = config.scraper.max_listings_per_run
 
@@ -168,4 +236,14 @@ async def run_scrapers(config: Config, context: BrowserContext) -> list[RawListi
         if isinstance(r, list):
             all_results.extend(r)
 
-    return all_results
+    # Deduplicate by (source, external_id) before fetching descriptions
+    seen: set[tuple[str, str]] = set()
+    unique: list[RawListing] = []
+    for l in all_results:
+        key = (l.source, l.external_id)
+        if key not in seen:
+            seen.add(key)
+            unique.append(l)
+
+    await _enrich_descriptions(unique, context, concurrency=config.scraper.description_concurrency)
+    return unique
