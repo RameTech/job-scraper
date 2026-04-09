@@ -54,7 +54,9 @@ async def main(
             "candidate_score": sl.candidate_score,
             "score": sl.total,
         }
-        if not dry_run:
+        if dry_run:
+            _print_listing(sl)
+        else:
             _, is_new = upsert_listing(data)
             if is_new:
                 new_count += 1

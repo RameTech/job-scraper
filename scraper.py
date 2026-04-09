@@ -49,22 +49,30 @@ async def scrape_indeed(
 
     query = keyword.replace(" ", "+")
     loc = location.replace(" ", "+")
-    url = f"https://www.indeed.com/jobs?q={query}&l={loc}&sort=date"
+    url = f"https://uk.indeed.com/jobs?q={query}&l={loc}&sort=date"
 
     try:
         await page.goto(url, timeout=30000)
-        await page.wait_for_selector("[data-jk]", timeout=10000)
+        await page.wait_for_selector(".tapItem", timeout=10000)
 
-        cards = await page.query_selector_all("[data-jk]")
+        cards = await page.query_selector_all(".tapItem")
         for card in cards[:max_results]:
-            jk = await card.get_attribute("data-jk") or ""
-            title_el = await card.query_selector("h2 a span")
+            # Job ID lives on the anchor: id="job_<jk>"
+            link_el = await card.query_selector("a[id^='job_']")
+            if not link_el:
+                continue
+            raw_id = await link_el.get_attribute("id") or ""
+            jk = raw_id.removeprefix("job_")
+
+            title_el = await card.query_selector("[id^='jobTitle']")
             company_el = await card.query_selector("[data-testid='company-name']")
             location_el = await card.query_selector("[data-testid='text-location']")
+            salary_el = await card.query_selector("[data-testid='attribute_snippet_testid']")
 
             title = (await title_el.inner_text()).strip() if title_el else ""
             company = (await company_el.inner_text()).strip() if company_el else ""
             loc_text = (await location_el.inner_text()).strip() if location_el else ""
+            salary = (await salary_el.inner_text()).strip() if salary_el else ""
 
             if not title or not jk:
                 continue
@@ -76,7 +84,8 @@ async def scrape_indeed(
                     title=title,
                     company=company,
                     location=loc_text,
-                    url=f"https://www.indeed.com/viewjob?jk={jk}",
+                    salary=salary,
+                    url=f"https://uk.indeed.com/viewjob?jk={jk}",
                 )
             )
     except Exception as e:
