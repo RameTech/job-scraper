@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from scraper import RawListing
 from config_schema import Config
+from sponsors import is_sponsor
 
 
 def passes_filters(listing: RawListing, config: Config) -> bool:
@@ -11,6 +12,11 @@ def passes_filters(listing: RawListing, config: Config) -> bool:
     for kw in config.filters.exclude_keywords:
         if kw.lower() in title_lower:
             return False
+
+    if config.filters.sponsors_only:
+        if not is_sponsor(listing.company, config.filters.sponsors_csv):
+            return False
+
     return True
 
 

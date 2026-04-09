@@ -15,6 +15,9 @@ build/
 data/*.db
 data/*.sqlite
 
+# Large data files (download separately — see README)
+data/sponsors.csv
+
 # IDE
 .vscode/
 .idea/

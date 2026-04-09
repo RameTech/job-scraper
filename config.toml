@@ -9,8 +9,10 @@ locations = ["Austria", "Vienna", "Remote"]
 sources = ["linkedin", "indeed"]
 
 [filters]
-min_salary = 0          # 0 = no filter
-exclude_keywords = []   # e.g. ["senior", "lead"] to exclude senior roles
+min_salary = 0              # 0 = no filter
+exclude_keywords = []       # e.g. ["senior", "lead"] to exclude senior roles
+sponsors_only = true        # only show jobs at UK visa sponsor companies
+sponsors_csv = "data/sponsors.csv"
 
 [storage]
 db_path = "data/jobs.db"

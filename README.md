@@ -17,6 +17,17 @@ python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 playwright install chromium
 cp .env.example .env   # fill in credentials if needed
+```
+
+### Visa sponsor filter (optional)
+
+Download the UK Home Office register of licensed sponsors and place it at `data/sponsors.csv`:
+
+> https://www.gov.uk/government/publications/register-of-licensed-sponsors-workers
+
+Then set `sponsors_only = true` in `config.toml` to filter results to visa-sponsoring companies only.
+
+```bash
 python main.py
 ```
 

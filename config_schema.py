@@ -19,6 +19,8 @@ class SearchConfig(BaseModel):
 class FiltersConfig(BaseModel):
     min_salary: int = 0
     exclude_keywords: list[str] = Field(default_factory=list)
+    sponsors_only: bool = False
+    sponsors_csv: str = "data/sponsors.csv"
 
 
 class StorageConfig(BaseModel):
