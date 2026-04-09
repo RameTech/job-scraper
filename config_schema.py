@@ -21,6 +21,17 @@ class FiltersConfig(BaseModel):
     exclude_keywords: list[str] = Field(default_factory=list)
     sponsors_only: bool = False
     sponsors_csv: str = "data/sponsors.csv"
+    require_location: str = ""                # e.g. "London" — drops listings without this in location
+    no_visa_phrases: list[str] = Field(default_factory=list)
+
+
+class ScoringConfig(BaseModel):
+    role_keywords: list[str] = Field(default_factory=list)
+    role_score: int = 30
+    level_keywords: list[str] = Field(default_factory=list)
+    level_score: int = 20
+    language_keywords: list[str] = Field(default_factory=list)
+    language_score: int = 50
 
 
 class StorageConfig(BaseModel):
@@ -31,6 +42,7 @@ class Config(BaseModel):
     scraper: ScraperConfig = Field(default_factory=ScraperConfig)
     search: SearchConfig = Field(default_factory=SearchConfig)
     filters: FiltersConfig = Field(default_factory=FiltersConfig)
+    scoring: ScoringConfig = Field(default_factory=ScoringConfig)
     storage: StorageConfig = Field(default_factory=StorageConfig)
 
     # From .env
@@ -47,7 +59,6 @@ def load_config(config_path: str = "config.toml") -> Config:
 
     cfg = Config(**raw)
 
-    # Overlay from environment
     cfg.linkedin_email = os.getenv("LINKEDIN_EMAIL", "")
     cfg.linkedin_password = os.getenv("LINKEDIN_PASSWORD", "")
 

@@ -4,15 +4,50 @@ timeout_ms = 30000
 max_listings_per_run = 100
 
 [search]
-keywords = ["software engineer", "backend developer"]
-locations = ["Austria", "Vienna", "Remote"]
+# No keyword filter — scrape broadly, scoring handles relevance
+keywords = ["project manager", "event manager", "executive assistant", "graduate", "entry level"]
+locations = ["London"]
 sources = ["linkedin", "indeed"]
 
 [filters]
-min_salary = 0              # 0 = no filter
-exclude_keywords = []       # e.g. ["senior", "lead"] to exclude senior roles
-sponsors_only = true        # only show jobs at UK visa sponsor companies
+sponsors_only = true          # only companies on UK visa sponsor register
 sponsors_csv = "data/sponsors.csv"
+require_location = "London"   # hard location filter on listing location field
+exclude_keywords = []
+
+# Phrases in description that mean the company will NOT sponsor a visa.
+# Any listing containing one of these (case-insensitive) is dropped.
+no_visa_phrases = [
+    "no visa sponsorship",
+    "cannot sponsor",
+    "unable to sponsor",
+    "does not offer sponsorship",
+    "sponsorship is not available",
+    "sponsorship not available",
+    "no work permit",
+    "must have the right to work",
+    "must already have the right to work",
+    "must be eligible to work in the uk",
+    "no sponsorship will be provided",
+    "we do not sponsor",
+    "candidates must have right to work",
+    "right to work in the uk is required",
+]
+
+[scoring]
+# Points added to base score of 0. Jobs are ranked highest score first.
+
+# Role match — title or description contains any of these
+role_keywords    = ["project management", "project manager", "event management", "event manager", "executive assistant", "ea to"]
+role_score       = 30
+
+# Level match — entry-level / graduate signals
+level_keywords   = ["entry level", "entry-level", "graduate", "post-undergrad", "junior", "trainee", "school leaver"]
+level_score      = 20
+
+# Language bonus — German speaker/requirement is a strong differentiator
+language_keywords = ["german", "deutsch", "german speaker", "german required", "fluent in german"]
+language_score    = 50
 
 [storage]
 db_path = "data/jobs.db"

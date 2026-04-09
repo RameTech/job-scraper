@@ -7,6 +7,7 @@ from pathlib import Path
 from peewee import (
     CharField,
     DateTimeField,
+    IntegerField,
     Model,
     SqliteDatabase,
     TextField,
@@ -26,6 +27,7 @@ class JobListing(Model):
     description = TextField(default="")
     salary = CharField(default="")
     posted_at = CharField(default="")         # raw string from site
+    score = IntegerField(default=0)           # relevance score (higher = better fit)
     first_seen = DateTimeField(default=datetime.utcnow)
     last_seen = DateTimeField(default=datetime.utcnow)
 
@@ -55,5 +57,8 @@ def upsert_listing(data: dict) -> tuple[JobListing, bool]:
         listing = JobListing.create(id=lid, **data, first_seen=now, last_seen=now)
         return listing, True
 
-    JobListing.update(last_seen=now).where(JobListing.id == lid).execute()
+    # Update score and last_seen on re-encounter
+    JobListing.update(last_seen=now, score=data.get("score", 0)).where(
+        JobListing.id == lid
+    ).execute()
     return existing, False
