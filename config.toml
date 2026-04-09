@@ -49,5 +49,21 @@ level_score      = 20
 language_keywords = ["german", "deutsch", "german speaker", "german required", "fluent in german"]
 language_score    = 50
 
+# ---------------------------------------------------------------------------
+# Visa sponsorship likelihood scoring
+# Based on UK Skilled Worker visa rules (July 2025)
+#   Standard threshold:    £41,700/yr
+#   New entrant/graduate:  £33,400/yr  (under-26, recent graduate, career switcher)
+#   Absolute floor:        £25,000/yr
+#   Eligible SOC codes:    project manager (2440), event manager (3557)
+#   Ineligible SOC codes:  executive assistant / PA (4113) — cannot be sponsored
+# ---------------------------------------------------------------------------
+[scoring.visa]
+eligible_role_score       = 40   # role SOC code is sponsorable
+salary_standard_score     = 30   # salary >= £41,700
+salary_new_entrant_score  = 15   # salary >= £33,400 (graduate/under-26 path only)
+salary_below_floor_penalty = -20 # salary explicitly < £25,000 — ineligible
+ineligible_role_penalty   = -20  # role not on eligible SOC list (EA/PA)
+
 [storage]
 db_path = "data/jobs.db"

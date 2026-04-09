@@ -4,6 +4,7 @@ from __future__ import annotations
 from scraper import RawListing
 from config_schema import Config, ScoringConfig
 from sponsors import is_sponsor
+from visa_rules import visa_score as _visa_score
 
 
 # ---------------------------------------------------------------------------
@@ -58,12 +59,13 @@ def filter_listings(listings: list[RawListing], config: Config) -> list[RawListi
 
 def score_listing(listing: RawListing, scoring: ScoringConfig) -> int:
     """
-    Return a relevance score for the listing.
+    Return a total relevance score for the listing.
 
     Breakdown:
-        +role_score      if title/description matches a target role keyword
-        +level_score     if title/description signals entry-level / graduate
-        +language_score  if title/description mentions German (strong signal)
+        +role_score          title/description matches a target role keyword
+        +level_score         entry-level / graduate signal
+        +language_score      German speaker / required
+        visa sub-score       SOC eligibility + salary vs UK thresholds (see visa_rules.py)
     """
     searchable = f"{listing.title} {listing.description}".lower()
     score = 0
@@ -76,6 +78,17 @@ def score_listing(listing: RawListing, scoring: ScoringConfig) -> int:
 
     if any(kw.lower() in searchable for kw in scoring.language_keywords):
         score += scoring.language_score
+
+    v = scoring.visa
+    visa_breakdown = _visa_score(
+        f"{listing.title} {listing.description}",
+        eligible_role_score=v.eligible_role_score,
+        salary_standard_score=v.salary_standard_score,
+        salary_new_entrant_score=v.salary_new_entrant_score,
+        salary_below_floor_penalty=v.salary_below_floor_penalty,
+        ineligible_role_penalty=v.ineligible_role_penalty,
+    )
+    score += visa_breakdown.score
 
     return score
 

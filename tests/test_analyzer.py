@@ -86,43 +86,47 @@ SCORING = ScoringConfig(
 
 
 def test_score_zero_for_unrelated():
+    # Lorry Driver: no role/level/language match, no visa SOC match → 0
     listing = make_listing(title="Lorry Driver", description="CDL required.")
     assert score_listing(listing, SCORING) == 0
 
 
 def test_score_role_match():
+    # role_score(30) + visa eligible role(40) = 70
     listing = make_listing(title="Project Manager")
-    assert score_listing(listing, SCORING) == 30
+    assert score_listing(listing, SCORING) == 70
 
 
 def test_score_level_match():
+    # level_score(20) only — "Graduate Software Engineer" has no visa SOC match
     listing = make_listing(title="Graduate Software Engineer")
     assert score_listing(listing, SCORING) == 20
 
 
 def test_score_language_bonus():
+    # language_score(50) only — "Office Administrator" has no visa SOC match
     listing = make_listing(title="Office Administrator", description="German speaker preferred.")
     assert score_listing(listing, SCORING) == 50
 
 
 def test_score_combines_signals():
-    # Role + level + German = 30 + 20 + 50 = 100
+    # role(30) + level(20) + language(50) + visa eligible role(40) = 140
     listing = make_listing(
         title="Graduate Event Manager",
         description="German speaker required.",
     )
-    assert score_listing(listing, SCORING) == 100
+    assert score_listing(listing, SCORING) == 140
 
 
 def test_rank_listings_sorted_best_first():
     config = Config(scoring=SCORING)
     listings = [
-        make_listing(title="Lorry Driver"),           # score 0
-        make_listing(title="Project Manager"),         # score 30
+        make_listing(title="Lorry Driver"),                                    # score 0
+        make_listing(title="Project Manager"),                                 # score 70
         make_listing(title="Graduate Event Manager",
-                     description="German required."),  # score 100
+                     description="German required."),                          # score 140
     ]
     ranked = rank_listings(listings, config)
     scores = [s for _, s in ranked]
     assert scores == sorted(scores, reverse=True)
-    assert scores[0] == 100
+    assert scores[0] == 140

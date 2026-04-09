@@ -25,6 +25,14 @@ class FiltersConfig(BaseModel):
     no_visa_phrases: list[str] = Field(default_factory=list)
 
 
+class VisaScoringConfig(BaseModel):
+    eligible_role_score: int = 40
+    salary_standard_score: int = 30
+    salary_new_entrant_score: int = 15
+    salary_below_floor_penalty: int = -20
+    ineligible_role_penalty: int = -20
+
+
 class ScoringConfig(BaseModel):
     role_keywords: list[str] = Field(default_factory=list)
     role_score: int = 30
@@ -32,6 +40,7 @@ class ScoringConfig(BaseModel):
     level_score: int = 20
     language_keywords: list[str] = Field(default_factory=list)
     language_score: int = 50
+    visa: VisaScoringConfig = Field(default_factory=VisaScoringConfig)
 
 
 class StorageConfig(BaseModel):
