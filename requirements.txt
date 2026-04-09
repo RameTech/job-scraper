@@ -1,0 +1,6 @@
+patchright>=1.0.0
+peewee>=3.17.0
+pydantic>=2.0.0
+pytoml>=0.1.21
+pytest>=8.0.0
+pytest-asyncio>=0.23.0

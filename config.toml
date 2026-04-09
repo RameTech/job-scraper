@@ -1,0 +1,16 @@
+[scraper]
+headless = true
+timeout_ms = 30000
+max_listings_per_run = 100
+
+[search]
+keywords = ["software engineer", "backend developer"]
+locations = ["Austria", "Vienna", "Remote"]
+sources = ["linkedin", "indeed"]
+
+[filters]
+min_salary = 0          # 0 = no filter
+exclude_keywords = []   # e.g. ["senior", "lead"] to exclude senior roles
+
+[storage]
+db_path = "data/jobs.db"
