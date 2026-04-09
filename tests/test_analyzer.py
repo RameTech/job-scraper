@@ -215,6 +215,20 @@ def test_candidate_score_good_fit_with_penalty():
     assert candidate_fit_score(listing, CAND_CFG) == 0
 
 
+def test_candidate_score_short_term_penalty():
+    cfg = CandidateFitConfig(short_term_keywords=["internship", "12 month", "ftc", "fixed term"], short_term_penalty=-40)
+    assert candidate_fit_score(make_listing(title="12 Month FTC Events Manager"), cfg) == -40
+    assert candidate_fit_score(make_listing(title="Graduate Events Coordinator"), cfg) == 0
+
+
+def test_candidate_score_short_term_variants():
+    cfg = CandidateFitConfig(short_term_keywords=["internship", "12 month", "ftc", "fixed term", "maternity cover"], short_term_penalty=-40)
+    assert candidate_fit_score(make_listing(title="Marketing Intern"), cfg) == 0  # "intern" not in list
+    assert candidate_fit_score(make_listing(title="Marketing Internship"), cfg) == -40
+    assert candidate_fit_score(make_listing(title="EA - Maternity Cover"), cfg) == -40
+    assert candidate_fit_score(make_listing(description="This is a fixed term contract."), cfg) == -40
+
+
 # ---------------------------------------------------------------------------
 # ScoredListing total property
 # ---------------------------------------------------------------------------

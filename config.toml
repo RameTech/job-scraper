@@ -134,5 +134,18 @@ team_management_keywords = ["managing a team", "people management", "line manage
                              "managing direct reports", "managing junior staff"]
 team_management_penalty = -15
 
+# Penalty: short-term / temporary role — not suitable for relocation to UK
+# Covers: internships, FTCs ≤12 months, maternity cover, temp contracts
+short_term_keywords = [
+    "internship", "intern role", "intern position",
+    "3 month", "3-month", "three month",
+    "6 month", "6-month", "six month",
+    "12 month", "12-month", "twelve month",
+    "fixed term", "fixed-term", "ftc",
+    "maternity cover", "maternity leave cover", "parental leave cover",
+    "temporary contract", "temp contract", "temporary role", "temp role",
+]
+short_term_penalty = -40
+
 [storage]
 db_path = "data/jobs.db"

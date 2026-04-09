@@ -142,6 +142,9 @@ def candidate_fit_score(listing: RawListing, cfg: CandidateFitConfig) -> int:
     if any(kw.lower() in searchable for kw in cfg.team_management_keywords):
         score += cfg.team_management_penalty
 
+    if any(kw.lower() in searchable for kw in cfg.short_term_keywords):
+        score += cfg.short_term_penalty
+
     return score
 
 

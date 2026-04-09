@@ -72,6 +72,10 @@ class CandidateFitConfig(BaseModel):
     team_management_keywords: list[str] = Field(default_factory=list)
     team_management_penalty: int = -15
 
+    # Penalty signals — short-term / temporary roles (incompatible with relocation)
+    short_term_keywords: list[str] = Field(default_factory=list)
+    short_term_penalty: int = -40
+
 
 class ScoringConfig(BaseModel):
     role_fit: RoleFitConfig = Field(default_factory=RoleFitConfig)
