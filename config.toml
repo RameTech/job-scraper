@@ -4,19 +4,19 @@ timeout_ms = 30000
 max_listings_per_run = 100
 
 [search]
-# No keyword filter — scrape broadly, scoring handles relevance
 keywords = ["project manager", "event manager", "executive assistant", "graduate", "entry level"]
 locations = ["London"]
 sources = ["linkedin", "indeed"]
 
+# ===========================================================================
+# Hard filters — listings failing these are dropped entirely
+# ===========================================================================
 [filters]
-sponsors_only = true          # only companies on UK visa sponsor register
+sponsors_only = true
 sponsors_csv = "data/sponsors.csv"
-require_location = "London"   # hard location filter on listing location field
+require_location = "London"
 exclude_keywords = []
 
-# Phrases in description that mean the company will NOT sponsor a visa.
-# Any listing containing one of these (case-insensitive) is dropped.
 no_visa_phrases = [
     "no visa sponsorship",
     "cannot sponsor",
@@ -34,36 +34,105 @@ no_visa_phrases = [
     "right to work in the uk is required",
 ]
 
-[scoring]
-# Points added to base score of 0. Jobs are ranked highest score first.
+# ===========================================================================
+# Score 1 — Role Fit
+# "Is this job the kind of role we are looking for?"
+# ===========================================================================
+[scoring.role_fit]
+role_keywords  = ["project manager", "project management", "programme manager",
+                  "event manager", "events manager", "event management", "events coordinator",
+                  "executive assistant", "ea to"]
+role_score     = 30
 
-# Role match — title or description contains any of these
-role_keywords    = ["project management", "project manager", "event management", "event manager", "executive assistant", "ea to"]
-role_score       = 30
+level_keywords = ["entry level", "entry-level", "graduate", "post-undergrad",
+                  "junior", "trainee", "school leaver", "recent graduate", "no experience"]
+level_score    = 20
 
-# Level match — entry-level / graduate signals
-level_keywords   = ["entry level", "entry-level", "graduate", "post-undergrad", "junior", "trainee", "school leaver"]
-level_score      = 20
-
-# Language bonus — German speaker/requirement is a strong differentiator
-language_keywords = ["german", "deutsch", "german speaker", "german required", "fluent in german"]
+# German is a strong differentiator for role search (rare requirement → less competition)
+language_keywords = ["german", "deutsch", "german speaker", "german required",
+                     "fluent in german", "native german"]
 language_score    = 50
 
-# ---------------------------------------------------------------------------
-# Visa sponsorship likelihood scoring
+# ===========================================================================
+# Score 2 — Visa Eligibility
+# "Can this job actually be sponsored under the Skilled Worker visa?"
 # Based on UK Skilled Worker visa rules (July 2025)
-#   Standard threshold:    £41,700/yr
-#   New entrant/graduate:  £33,400/yr  (under-26, recent graduate, career switcher)
-#   Absolute floor:        £25,000/yr
-#   Eligible SOC codes:    project manager (2440), event manager (3557)
-#   Ineligible SOC codes:  executive assistant / PA (4113) — cannot be sponsored
-# ---------------------------------------------------------------------------
+#   Standard threshold:      £41,700/yr
+#   New entrant / graduate:  £33,400/yr
+#   Absolute floor:          £25,000/yr
+# ===========================================================================
 [scoring.visa]
-eligible_role_score       = 40   # role SOC code is sponsorable
-salary_standard_score     = 30   # salary >= £41,700
-salary_new_entrant_score  = 15   # salary >= £33,400 (graduate/under-26 path only)
-salary_below_floor_penalty = -20 # salary explicitly < £25,000 — ineligible
-ineligible_role_penalty   = -20  # role not on eligible SOC list (EA/PA)
+eligible_role_score       = 40   # SOC-eligible target role (PM / Events)
+other_eligible_score      = 20   # Any other SOC-eligible role
+salary_standard_score     = 30   # Salary >= £41,700
+salary_new_entrant_score  = 15   # Salary >= £33,400 (graduate / under-26 only)
+salary_below_floor_penalty = -20 # Salary < £25,000 — absolutely ineligible
+ineligible_role_penalty   = -20  # Role SOC is not sponsorable (EA/PA)
+
+# ===========================================================================
+# Score 3 — Candidate Fit
+# "How competitive is Martha Hartl's profile for this specific role?"
+#
+# Profile summary:
+#   - BSc Economics / Socioeconomics, WU Wien (ongoing, new entrant rate applies)
+#   - CRM: Salesforce (Rieder Facades), Egocentric (Philharmonie Salzburg)
+#   - Client relations: 3 roles at Rieder Facades
+#   - Events / arts sector: Philharmonie Salzburg internship
+#   - EA / admin coordination: Rieder Facades Assistenz der GF
+#   - Native German speaker, English B2
+#   - No team management experience
+#   - No 3+ years continuous experience
+# ===========================================================================
+[scoring.candidate]
+
+# CRM tools — Martha has hands-on Salesforce and Egocentric experience
+crm_keywords = ["crm", "salesforce", "hubspot", "dynamics", "client management system",
+                 "zoho", "database management"]
+crm_score = 20
+
+# Client-facing work — her primary background
+client_relations_keywords = ["client relations", "client management", "account management",
+                              "relationship management", "stakeholder management",
+                              "client services", "customer success", "customer relations",
+                              "partner management", "client support", "account executive"]
+client_relations_score = 20
+
+# Admin and coordination — strong background from EA and working student roles
+admin_coord_keywords = ["administrative", "coordination", "scheduling", "diary management",
+                        "calendar management", "meeting preparation", "meeting coordination",
+                        "office management", "executive support", "operations support",
+                        "document management", "data entry", "filing", "correspondence"]
+admin_coord_score = 15
+
+# Events / arts / culture sector — Philharmonie experience is a real differentiator
+sector_keywords = ["events", "event", "arts", "culture", "concert", "venue", "hospitality",
+                   "entertainment", "theatre", "theater", "music", "philharmonic",
+                   "gallery", "museum", "festival", "conference", "exhibition"]
+sector_score = 20
+
+# Data, reporting, MS Office — she has this from CRM work and research roles
+data_reporting_keywords = ["data analysis", "reporting", "excel", "microsoft office",
+                            "ms office", "analytics", "presentations", "powerpoint",
+                            "data management", "market research", "competitive analysis"]
+data_reporting_score = 10
+
+# Degree relevance — Economics/Business degree signals
+degree_relevance_keywords = ["economics", "business administration", "business degree",
+                              "bachelor", "undergraduate", "degree required",
+                              "management degree", "social science"]
+degree_relevance_score = 10
+
+# Penalty: job requires seniority Martha doesn't have
+overqualified_keywords = ["minimum 3 years", "3+ years", "5+ years", "5 years experience",
+                          "7+ years", "senior manager", "head of department",
+                          "extensive experience", "proven track record of"]
+overqualified_penalty = -20
+
+# Penalty: job requires managing a team (no management experience on CV)
+team_management_keywords = ["managing a team", "people management", "line management",
+                             "team leader", "managing staff", "direct reports",
+                             "managing direct reports", "managing junior staff"]
+team_management_penalty = -15
 
 [storage]
 db_path = "data/jobs.db"
